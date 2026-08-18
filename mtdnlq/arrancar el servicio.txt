@@ -1,0 +1,21 @@
+
+Requisitos previos
+- PostgreSQL con mtd10 en localhost:5433 (según tu .env).
+- .env configurado en mtdnlq\.env (ya lo tienes).
+- Entorno Python con dependencias (.venv ya existe).
+
+
+Si nunca instalaste dependencias:
+
+
+cd "D:\proyectos\AI\Analisis en lenguaje Natural\mtdnlq"
+.\.venv\Scripts\python -m pip install -r requirements.txt
+
+
+
+
+
+Arrancar el servidor (PowerShell)
+cd "D:\proyectos\AI\Analisis en lenguaje Natural\mtdnlq"
+$env:PYTHONPATH = "src"
+.\.venv\Scripts\python -m uvicorn mtdnlq.main:app --host 0.0.0.0 --port 8001 --reload
