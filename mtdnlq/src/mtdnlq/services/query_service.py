@@ -8,13 +8,16 @@ from collections.abc import Callable
 from typing import Any, Literal
 from sqlalchemy import text
 from ..nlq.translator import translate_to_sql
+from ..nlq.sql_source_parser import extract_geometry_source_table
 from ..db.executor import execute_query
 from ..db.connection import get_db_session
+from ..db.query_history import ensure_query_history_table
 from ..llm.factory import create_llm_provider
 from ..api.schemas import QueryRequest, QueryResponse
 from ..core.config import settings
 from ..core.exceptions import DatabaseError, QueryTimeoutError
 from ..core.scale import database_name
+from .layer_style_service import fetch_layer_style_qml
 from .query_progress import QueryProgressTracker
 
 logger = logging.getLogger(__name__)
@@ -107,6 +110,10 @@ async def process_query(
         progress.enter("formatting")
         results = _format_results(rows, request.output_format)
         display_mode, columns, has_geometry = _detect_display_mode(rows, results)
+        source_schema, source_table = _extract_source_layer(sql_generated)
+        style_qml, style_name = _resolve_layer_style(
+            has_geometry, source_schema, source_table, scale
+        )
 
         explanation = None
         if request.explain:
@@ -129,6 +136,10 @@ async def process_query(
             has_geometry=has_geometry,
             scale=scale,
             database=database_name(scale),
+            source_schema=source_schema,
+            source_table=source_table,
+            style_qml=style_qml,
+            style_name=style_name,
         )
 
     except Exception as e:
@@ -144,6 +155,7 @@ async def process_query(
             execution_ms=(time.perf_counter() - start_time) * 1000,
             status=status,
             error_msg=error_msg,
+            scale=scale,
         )
 
     return response
@@ -230,6 +242,26 @@ def _detect_display_mode(
     return "table", columns, False
 
 
+def _extract_source_layer(sql: str) -> tuple[str | None, str | None]:
+    """Esquema y tabla origen para simbología MTD (public.layer_styles)."""
+    source = extract_geometry_source_table(sql)
+    if not source:
+        return None, None
+    return source[0], source[1]
+
+
+def _resolve_layer_style(
+    has_geometry: bool,
+    source_schema: str | None,
+    source_table: str | None,
+    scale: int,
+    style_mode: str = "i",
+) -> tuple[str | None, str | None]:
+    if not source_schema or not source_table:
+        return None, None
+    return fetch_layer_style_qml(source_schema, source_table, scale, mode=style_mode)
+
+
 async def _generate_explanation(question: str, sql: str, llm) -> str:
     """Pide al LLM una explicación breve del SQL en lenguaje natural."""
     try:
@@ -245,10 +277,11 @@ async def _generate_explanation(question: str, sql: str, llm) -> str:
         return None
 
 
-def _record_history(question, sql, result_count, execution_ms, status, error_msg):
+def _record_history(question, sql, result_count, execution_ms, status, error_msg, scale=None):
     """Registra la consulta en query_history (best-effort)."""
     try:
-        with get_db_session() as session:
+        ensure_query_history_table(scale)
+        with get_db_session(scale) as session:
             session.execute(text("""
                 INSERT INTO query_history
                     (question, sql_generated, llm_provider, llm_model,
@@ -266,4 +299,9 @@ def _record_history(question, sql, result_count, execution_ms, status, error_msg
                 "err": error_msg,
             })
     except Exception as e:
-        logger.warning("No se pudo registrar en historial: %s", e)
+        detail = getattr(e, "detail", None) or str(e)
+        logger.warning(
+            "No se pudo registrar en historial (escala %s): %s",
+            scale,
+            detail,
+        )

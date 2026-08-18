@@ -117,6 +117,26 @@ class MtdnlqClient:
     def get_job(self, job_id: str) -> dict:
         return self._request("GET", f"/api/v1/jobs/{job_id}", timeout=30)
 
+    def get_layer_style(
+        self,
+        source_schema: str,
+        source_table: str,
+        scale: int = 10000,
+        style_mode: str = "i",
+    ) -> dict:
+        """GET /api/v1/layer-style — QML desde public.layer_styles vía backend."""
+        from urllib.parse import urlencode
+
+        params = urlencode(
+            {
+                "source_schema": source_schema,
+                "source_table": source_table,
+                "scale": scale,
+                "style_mode": style_mode,
+            }
+        )
+        return self._request("GET", f"/api/v1/layer-style?{params}", timeout=30)
+
     def wait_for_job(
         self,
         job_id: str,

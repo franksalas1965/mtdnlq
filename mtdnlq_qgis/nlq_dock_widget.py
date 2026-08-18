@@ -308,8 +308,25 @@ class NlqDockWidget(QDockWidget):
         self.status_label.setText("Pregunta cargada desde el historial.")
         self.status_label.setStyleSheet("color: #2563eb;")
 
-    def _on_history_load_map(self, geojson_path: str, label: str):
-        ok = self.map_locator.load_geojson_file(geojson_path, label)
+    def _on_history_load_map(
+        self,
+        geojson_path: str,
+        label: str,
+        scale: int,
+        source_schema: str,
+        source_table: str,
+        sql: str,
+        style_qml: str,
+    ):
+        ok = self.map_locator.load_geojson_file(
+            geojson_path,
+            label,
+            scale=scale,
+            source_schema=source_schema or None,
+            source_table=source_table or None,
+            sql=sql or None,
+            style_qml=style_qml or None,
+        )
         if ok:
             self.status_label.setText(f"Capa añadida al mapa: {label[:40]}")
             self.status_label.setStyleSheet("color: green;")

@@ -28,7 +28,7 @@ class HistoryPanel(QWidget):
 
     restore_results = pyqtSignal(dict)
     restore_question = pyqtSignal(str, int)
-    load_on_map = pyqtSignal(str, str)
+    load_on_map = pyqtSignal(str, str, int, str, str, str, str)
 
     def __init__(self, history_store: QueryHistoryStore, parent=None):
         super().__init__(parent)
@@ -200,7 +200,15 @@ class HistoryPanel(QWidget):
             QMessageBox.warning(self, "MTD-NLQ", "No se encontró results.geojson en la cápsula.")
             return
         label = (entry.get("question") or "consulta")[:48]
-        self.load_on_map.emit(geojson_path, label)
+        self.load_on_map.emit(
+            geojson_path,
+            label,
+            int(entry.get("scale") or 10000),
+            str(data.get("source_schema") or ""),
+            str(data.get("source_table") or ""),
+            str(data.get("sql") or ""),
+            str(data.get("style_qml") or ""),
+        )
 
     def _on_open_folder(self):
         entry = self._selected_entry()

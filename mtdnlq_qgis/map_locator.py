@@ -2,6 +2,7 @@
 """Localización puntual de un resultado geográfico en el mapa de QGIS."""
 import json
 import os
+from typing import TYPE_CHECKING
 
 from qgis.core import (
     QgsCoordinateReferenceSystem,
@@ -18,11 +19,16 @@ from qgis.core import (
     QgsSingleSymbolRenderer,
     QgsWkbTypes,
 )
-from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtCore import QMetaType, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QApplication, QMessageBox
 
 from .mtd_fields import stringify_mtd_properties
+from .mtd_style_loader import apply_mtd_style
+from .style_resolver import StyleResolver
+
+if TYPE_CHECKING:
+    from .settings_manager import SettingsManager
 
 
 HIGHLIGHT_LAYER_PREFIX = "MTD-NLQ — localizar"
@@ -38,9 +44,10 @@ BASE_LAYER_REQUIRED_MSG = (
 class MapLocator:
     """Crea una capa temporal con un solo feature y hace zoom."""
 
-    def __init__(self, iface, settings_manager):
+    def __init__(self, iface, settings_manager: "SettingsManager"):
         self.iface = iface
         self.settings = settings_manager
+        self._style_resolver = StyleResolver(settings_manager)
         self._layer_counter = 0
 
     def _remove_previous_layers(self) -> None:
@@ -95,6 +102,37 @@ class MapLocator:
 
         layer.setRenderer(QgsSingleSymbolRenderer(symbol))
 
+    def _apply_layer_style(
+        self,
+        layer: QgsVectorLayer,
+        scale: int,
+        source_schema: str | None = None,
+        source_table: str | None = None,
+        sql: str | None = None,
+        style_qml: str | None = None,
+        feature_props: dict | None = None,
+    ) -> bool:
+        qml = self._style_resolver.resolve(
+            scale=scale,
+            source_schema=source_schema,
+            source_table=source_table,
+            sql=sql,
+            style_qml=style_qml,
+        )
+
+        if apply_mtd_style(
+            layer,
+            qml,
+            source_schema,
+            source_table,
+            feature_props=feature_props,
+        ):
+            return True
+
+        if self.settings.get("fallback_highlight"):
+            self._style_layer(layer)
+        return False
+
     def _source_crs(self) -> QgsCoordinateReferenceSystem:
         """CRS de las geometrías MTD (NAD27 por defecto)."""
         authid = (self.settings.get("map_crs") or "EPSG:4267").strip()
@@ -107,7 +145,6 @@ class MapLocator:
         """Margen mínimo de zoom en unidades del CRS destino (mapa)."""
         if crs.isGeographic():
             return max(extent.width() * 0.05, extent.height() * 0.05, 0.002)
-        # EPSG:3857 u otro proyectado: ~100 m
         return max(extent.width() * 0.05, extent.height() * 0.05, 100.0)
 
     def _extent_for_canvas(self, layer: QgsVectorLayer) -> QgsRectangle | None:
@@ -165,7 +202,7 @@ class MapLocator:
         props = stringify_mtd_properties(feature_dict.get("properties") or {})
         fields = QgsFields()
         for key in props:
-            fields.append(QgsField(str(key), QVariant.String))
+            fields.append(QgsField(str(key), QMetaType.Type.QString))
 
         layer.dataProvider().addAttributes(fields.toList())
         layer.updateFields()
@@ -177,7 +214,16 @@ class MapLocator:
         layer.updateExtents()
         return layer
 
-    def locate_feature(self, feature_dict: dict, label: str = "") -> bool:
+    def locate_feature(
+        self,
+        feature_dict: dict,
+        label: str = "",
+        scale: int = 10000,
+        source_schema: str | None = None,
+        source_table: str | None = None,
+        sql: str | None = None,
+        style_qml: str | None = None,
+    ) -> bool:
         """Muestra un único GeoJSON Feature en el mapa y hace zoom."""
         if not self.has_base_layers():
             QMessageBox.warning(
@@ -197,7 +243,16 @@ class MapLocator:
         if not layer:
             return False
 
-        self._style_layer(layer)
+        props = feature_dict.get("properties") or {}
+        self._apply_layer_style(
+            layer,
+            scale=scale,
+            source_schema=source_schema,
+            source_table=source_table,
+            sql=sql,
+            style_qml=style_qml,
+            feature_props=props,
+        )
         QgsProject.instance().addMapLayer(layer)
 
         extent = self._extent_for_canvas(layer)
@@ -210,7 +265,16 @@ class MapLocator:
         QApplication.processEvents()
         return True
 
-    def load_geojson_file(self, path: str, label: str = "") -> bool:
+    def load_geojson_file(
+        self,
+        path: str,
+        label: str = "",
+        scale: int = 10000,
+        source_schema: str | None = None,
+        source_table: str | None = None,
+        sql: str | None = None,
+        style_qml: str | None = None,
+    ) -> bool:
         """Carga un GeoJSON guardado (cápsula de historial) como capa OGR."""
         if not os.path.isfile(path):
             return False
@@ -234,7 +298,14 @@ class MapLocator:
         if not layer.crs().isValid():
             layer.setCrs(source_crs)
 
-        self._style_layer(layer)
+        self._apply_layer_style(
+            layer,
+            scale=scale,
+            source_schema=source_schema,
+            source_table=source_table,
+            sql=sql,
+            style_qml=style_qml,
+        )
         QgsProject.instance().addMapLayer(layer)
 
         extent = self._extent_for_canvas(layer)

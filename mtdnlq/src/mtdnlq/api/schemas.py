@@ -58,7 +58,6 @@ class QueryResponse(BaseModel):
         default=None,
         description="Explicación del SQL generado (solo si explain=True)",
     )
-    # ── Campos para el cliente web ────────────────────────────────────────────
     display_mode: Literal["map", "table", "summary"] = Field(
         default="table",
         description=(
@@ -84,6 +83,34 @@ class QueryResponse(BaseModel):
         default="",
         description="Base de datos PostGIS consultada (ej. mtd10)",
     )
+    source_schema: str | None = Field(
+        default=None,
+        description="Esquema PostGIS de la capa que aporta geometría",
+    )
+    source_table: str | None = Field(
+        default=None,
+        description="Tabla PostGIS de la capa que aporta geometría",
+    )
+    style_qml: str | None = Field(
+        default=None,
+        description="QML de simbología MTD (public.layer_styles) para la capa origen",
+    )
+    style_name: str | None = Field(
+        default=None,
+        description="Nombre del estilo en layer_styles (p. ej. rios_y_arroyos_lineal_i)",
+    )
+
+
+class LayerStyleResponse(BaseModel):
+    """Estilo QGIS de una capa MTD en public.layer_styles."""
+    scale: int
+    database: str
+    source_schema: str
+    source_table: str
+    style_mode: str = Field(description="Modo de estilo: e, i o s")
+    style_name: str | None = None
+    style_qml: str | None = None
+    found: bool = False
 
 
 class HealthResponse(BaseModel):

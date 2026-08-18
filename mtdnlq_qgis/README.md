@@ -100,7 +100,9 @@ Menú del panel → **Configuración…** o botón homónimo en el dock.
 | Incluir explicación | No | Pide texto explicativo del SQL |
 | Mostrar SQL | Sí | Panel con la sentencia generada |
 | CRS para resultados | EPSG:4267 | NAD27 del MTD |
-| Color / grosor resaltado | #2563eb / 2 | Estilo al localizar en mapa |
+| PostGIS (layer_styles) | — | El backend lee `public.layer_styles` y envía `style_qml` |
+| Simbología MTD | Sí | QML en la respuesta API (modo impresión `_i` por defecto) |
+| Color / grosor resaltado | #2563eb / 2 | Respaldo si no hay estilo en layer_styles |
 | Quitar capa anterior | Sí | Solo una localización visible |
 
 Los valores se guardan en **QSettings** (`MTD-NLQ` / `mtdnlq_qgis`) dentro del perfil de QGIS del usuario.
@@ -125,7 +127,7 @@ Use **Probar conexión** para validar `GET /api/v1/health` antes de consultar.
 | `summary` | Tabla Campo / Valor |
 | Explicación | Área de texto arriba del resultado |
 
-**Localizar en mapa:** en resultados con geometría, pulse el icono de zoom en la fila deseada. Se crea una capa temporal `MTD-NLQ — localizar: …` y el mapa hace zoom a ese registro.
+**Localizar en mapa:** en resultados con geometría, pulse el icono de zoom en la fila deseada. Se crea una capa temporal `MTD-NLQ — localizar: …` con la simbología oficial de `public.layer_styles` (según escala y `geocodigo`) y el mapa hace zoom a ese registro.
 
 ---
 

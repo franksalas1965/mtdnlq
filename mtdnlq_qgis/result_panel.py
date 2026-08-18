@@ -33,6 +33,7 @@ class ResultPanel(QWidget):
         self.map_locator = map_locator
         self._features_by_row: dict[int, dict] = {}
         self._current_data: dict | None = None
+        self._query_scale: int = 10000
         self._build_ui()
 
     def _build_ui(self):
@@ -161,6 +162,7 @@ class ResultPanel(QWidget):
     ):
         self.clear()
         self._current_data = data
+        self._query_scale = int(data.get("scale") or 10000)
 
         display_mode = data.get("display_mode", "table")
         total = data.get("total", 0)
@@ -357,7 +359,15 @@ class ResultPanel(QWidget):
             return
         props = feat.get("properties") or {}
         label = props.get("nombre") or props.get("nomenclatura") or props.get("geo_id") or f"Fila {row + 1}"
-        ok = self.map_locator.locate_feature(feat, label=str(label))
+        ok = self.map_locator.locate_feature(
+            feat,
+            label=str(label),
+            scale=self._query_scale,
+            source_schema=self._current_data.get("source_schema") if self._current_data else None,
+            source_table=self._current_data.get("source_table") if self._current_data else None,
+            sql=self._current_data.get("sql") if self._current_data else None,
+            style_qml=self._current_data.get("style_qml") if self._current_data else None,
+        )
         if not ok:
             if self.map_locator.has_base_layers():
                 self.hint_label.setText("No se pudo localizar la geometría de este registro.")

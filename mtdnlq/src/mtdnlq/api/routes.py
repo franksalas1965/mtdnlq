@@ -11,10 +11,13 @@ from .schemas import (
     JobSubmitResponse,
     JobStatusResponse,
     QueueStatsResponse,
+    LayerStyleResponse,
 )
 from ..services.query_service import process_query
+from ..services.layer_style_service import fetch_layer_style_qml
 from ..services.job_queue import job_queue
 from ..db.connection import get_db_session, test_connection
+from ..db.query_history import ensure_query_history_table
 from ..db.schema_inspector import schema_inspector
 from ..core.config import settings
 from ..core.scale import database_name
@@ -193,6 +196,36 @@ async def get_schema(
 
 
 @router.get(
+    "/layer-style",
+    response_model=LayerStyleResponse,
+    summary="Simbología MTD de una capa (layer_styles)",
+)
+async def get_layer_style(
+    source_schema: str = Query(..., description="Esquema PostGIS, p. ej. 10_hidrografia"),
+    source_table: str = Query(..., description="Tabla PostGIS, p. ej. rios_y_arroyos_lineal"),
+    scale: int = Query(default=10000, description="Denominador de escala MTD"),
+    style_mode: str = Query(default="i", description="Modo: e (edición), i (impresión), s (simplificado)"),
+):
+    """Devuelve el QML de public.layer_styles para que el cliente QGIS aplique simbología."""
+    _validate_scale(scale)
+    mode = style_mode.strip().lower() if style_mode else "i"
+    if mode not in ("e", "i", "s"):
+        mode = "i"
+
+    style_qml, style_name = fetch_layer_style_qml(source_schema, source_table, scale, mode=mode)
+    return LayerStyleResponse(
+        scale=scale,
+        database=database_name(scale),
+        source_schema=source_schema,
+        source_table=source_table,
+        style_mode=mode,
+        style_name=style_name,
+        style_qml=style_qml,
+        found=bool(style_qml),
+    )
+
+
+@router.get(
     "/history",
     summary="Historial de consultas",
 )
@@ -203,6 +236,7 @@ async def get_history(
 ):
     """Retorna el historial de consultas procesadas."""
     try:
+        ensure_query_history_table()
         with get_db_session() as session:
             where = "WHERE status = :status" if status else ""
             rows = session.execute(text(f"""

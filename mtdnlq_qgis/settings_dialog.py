@@ -184,6 +184,35 @@ class SettingsDialog(QDialog):
 
         ui_scroll_layout.addWidget(ui_group)
 
+        style_group = QGroupBox("Simbología MTD (vía backend)")
+        style_form = QFormLayout(style_group)
+
+        self.use_mtd_styles_check = QCheckBox(
+            "Aplicar simbología oficial al localizar (style_qml del servicio MTD-NLQ)"
+        )
+        style_form.addRow(self.use_mtd_styles_check)
+
+        self.style_mode_combo = QComboBox()
+        self.style_mode_combo.addItem("Impresión (_i)", "i")
+        self.style_mode_combo.addItem("Edición (_e)", "e")
+        self.style_mode_combo.addItem("Simplificado (_s)", "s")
+        style_form.addRow("Modo de estilo:", self.style_mode_combo)
+
+        self.fallback_highlight_check = QCheckBox(
+            "Usar resaltado azul si el backend no devuelve estilo"
+        )
+        style_form.addRow(self.fallback_highlight_check)
+
+        style_hint = QLabel(
+            "El plugin no se conecta a PostgreSQL: el backend lee public.layer_styles "
+            "y envía el QML en la respuesta (o en GET /api/v1/layer-style)."
+        )
+        style_hint.setWordWrap(True)
+        style_hint.setStyleSheet("color: #555; font-size: 10px;")
+        style_form.addRow("", style_hint)
+
+        ui_scroll_layout.addWidget(style_group)
+
         map_group = QGroupBox("Mapa — localizar registro")
         map_form = QFormLayout(map_group)
 
@@ -265,6 +294,11 @@ class SettingsDialog(QDialog):
         self.async_check.setChecked(bool(s.get("use_async_queries", True)))
         self.poll_spin.setValue(int(s.get("poll_interval_seconds", 3)))
         self.crs_edit.setText(str(s["map_crs"]))
+        self.use_mtd_styles_check.setChecked(bool(s.get("use_mtd_layer_styles", True)))
+        style_idx = self.style_mode_combo.findData(s.get("style_mode", DEFAULTS["style_mode"]))
+        if style_idx >= 0:
+            self.style_mode_combo.setCurrentIndex(style_idx)
+        self.fallback_highlight_check.setChecked(bool(s.get("fallback_highlight", True)))
         self.color_edit.setText(str(s["highlight_color"]))
         self.width_spin.setValue(int(s["highlight_width"]))
         self.buffer_spin.setValue(int(s["zoom_buffer_percent"]))
@@ -356,6 +390,9 @@ class SettingsDialog(QDialog):
                 "use_async_queries": self.async_check.isChecked(),
                 "poll_interval_seconds": self.poll_spin.value(),
                 "map_crs": self.crs_edit.text().strip() or DEFAULTS["map_crs"],
+                "use_mtd_layer_styles": self.use_mtd_styles_check.isChecked(),
+                "style_mode": self.style_mode_combo.currentData() or DEFAULTS["style_mode"],
+                "fallback_highlight": self.fallback_highlight_check.isChecked(),
                 "highlight_color": self.color_edit.text().strip() or DEFAULTS["highlight_color"],
                 "highlight_width": self.width_spin.value(),
                 "zoom_buffer_percent": self.buffer_spin.value(),

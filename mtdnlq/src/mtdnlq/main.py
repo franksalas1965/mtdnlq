@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .api.routes import router
 from .core.config import settings
 from .db.connection import test_connection
+from .db.query_history import ensure_query_history_for_enabled_scales
 from .db.schema_inspector import schema_inspector
 
 logging.basicConfig(
@@ -26,6 +27,7 @@ async def lifespan(app: FastAPI):
 
     if test_connection():
         logger.info("Conexión a PostgreSQL/PostGIS: OK")
+        ensure_query_history_for_enabled_scales()
         default_scale = settings.default_scale
         schema = schema_inspector.get_schema(default_scale)
         logger.info(
