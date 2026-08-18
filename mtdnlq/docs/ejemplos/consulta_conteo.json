@@ -1,0 +1,6 @@
+{
+  "question": "Cuantos rios y arroyos hay",
+  "output_format": "table",
+  "explain": true,
+  "max_results": 10
+}

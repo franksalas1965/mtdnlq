@@ -1,0 +1,49 @@
+version: "3.9"
+
+# Demo/desarrollo: PostGIS + API en contenedores.
+# Si Postgres/PostGIS YA existe en el servidor, NO uses este fichero (evitas duplicar BD y conflicto en 5432).
+# Usa: docker-compose.external-db.yml  o  dist/docker-compose.yml  (solo API).
+
+services:
+
+  # PostgreSQL + PostGIS
+  postgis:
+    image: postgis/postgis:16-3.4
+    container_name: geonlq_postgis
+    environment:
+      POSTGRES_DB: geonlq
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+      - ./docs/schema/001_initial_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./docs/schema/002_sample_data.sql:/docker-entrypoint-initdb.d/02_data.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d geonlq"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Servicio GeoNLQ
+  geonlq:
+    build: .
+    container_name: geonlq_api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres_password@postgis:5432/geonlq
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src   # Hot-reload en desarrollo
+    command: uvicorn geonlq.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgis_data:

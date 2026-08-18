@@ -1,0 +1,3 @@
+wsl bash -c "rsync -av --delete '/mnt/d/proyectos/AI/Analisis en lenguaje Natural/mtdnlq/src/' ~/mtdnlq/src/"
+
+wsl bash -c "cd ~/mtdnlq && docker compose -f docker-compose.external-db.yml restart mtdnlq"

@@ -1,0 +1,6 @@
+{
+  "question": "Dame los limites estatales del MTD",
+  "output_format": "geojson",
+  "explain": true,
+  "max_results": 50
+}

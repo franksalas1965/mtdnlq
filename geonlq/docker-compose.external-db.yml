@@ -1,0 +1,39 @@
+# GeoNLQ — solo API en Docker; PostgreSQL/PostGIS en el servidor (no en contenedor).
+#
+# Uso:
+#   cp .env.docker.example .env
+#   # Editar .env con host, puerto, usuario y BD del servidor destino
+#   docker compose -f docker-compose.external-db.yml build
+#   docker compose -f docker-compose.external-db.yml up -d
+#
+# Código API: ./src montado en /app/src (--reload). Cambios en src/ sin rebuild de imagen.
+# Sin volumen / varios workers: dist/docker-compose.prod.yml o quitar volumes y --reload aquí.
+#
+# Requiere Docker Compose v2 (comando `docker compose`) o docker-compose 1.29+
+
+services:
+  geonlq:
+    build: .
+    image: geonlq:${GEONLQ_IMAGE_TAG:-latest}
+    container_name: geonlq_api
+    restart: unless-stopped
+    ports:
+      - "${GEONLQ_HOST_PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      # Construye la URL desde variables del .env (sustitución de Compose).
+      # Si prefieres una sola cadena, define DATABASE_URL en .env y comenta este bloque.
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      PYTHONPATH: /app/src
+    extra_hosts:
+      # Postgres en el mismo Linux que Docker (escucha en 127.0.0.1 del host)
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./src:/app/src
+    command: >
+      uvicorn geonlq.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --log-level ${UVICORN_LOG_LEVEL:-info}

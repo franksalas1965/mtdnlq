@@ -1,0 +1,18 @@
+[general]
+name=MTD-NLQ
+qgisMinimumVersion=3.40
+qgisMaximumVersion=3.99
+description=Consultas en lenguaje natural sobre el Mapa Topográfico Digital mediante el servicio MTD-NLQ
+version=1.0.0
+author=MTD-NLQ
+email=
+about=Plugin configurable para enviar preguntas en español al servicio MTD-NLQ (FastAPI + Ollama + PostGIS) y visualizar resultados en tabla, resumen o localización puntual en el mapa.
+tracker=
+repository=
+tags=MTD,NLQ,PostGIS,consulta,lenguaje natural
+category=Database
+icon=icons/mtdnlq.svg
+experimental=False
+deprecated=False
+server=False
+hasProcessingProvider=no

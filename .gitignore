@@ -1,0 +1,43 @@
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+!.env.docker.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+Desktop.ini
+
+# Datos locales, volcados y resultados (no subir a GitHub)
+*.sql
+modelos_locales/
+resultados*/
+**/query_history/
+**/capsules/
+
+# Copias y proyectos legacy (opcional: quitar línea si quieres incluirlos)
+geonlq - copia/
+
+# QGIS / temporales
+*.qgz~
+*.qgs~

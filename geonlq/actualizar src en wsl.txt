@@ -1,0 +1,9 @@
+
+Actualizando src en linux:
+wsl bash -c "rsync -av --delete '/mnt/d/proyectos/AI/Analisis en lenguaje Natural/geonlq/src/' ~/geonlq/src/"
+
+Reiniciando:
+wsl bash -c "cd ~/geonlq && docker compose -f docker-compose.external-db.yml restart geonlq"
+
+Probando:
+curl -s -X POST http://localhost:8000/api/v1/query -H "Content-Type: application/json" -d "{\"question\":\"Dame todos los puentes\",\"output_format\":\"table\",\"max_results\":100}"
